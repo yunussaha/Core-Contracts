@@ -15,6 +15,11 @@ import "./lib/SafeMathInt.sol";
 contract SeigniorageShares is ERC20Detailed, Ownable {
     address private _minter;
 
+    modifier onlyMinter() {
+        require(msg.sender == _minter, "DOES_NOT_HAVE_MINTER_ROLE");
+        _;
+    }
+
     using SafeMath for uint256;
     using SafeMathInt for int256;
 
@@ -25,32 +30,31 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
     uint256 private constant MAX_SUPPLY = ~uint128(0);  // (2^128) - 1
 
     uint256 private _totalSupply;
-    uint256 private totalDisbursementPoints;
-    uint256 private unclaimedShares;
 
     struct Account {
         uint256 balance;
         uint256 lastDividendPoints;
     }
 
-    bool private initializedDollar;
+    bool private _initializedDollar;
     // eslint-ignore
-    IDollars dollars;
+    IDollars Dollars;
 
     mapping(address=>Account) private _shareBalances;
     mapping (address => mapping (address => uint256)) private _allowedShares;
 
-    function setDividendPoints(address who, uint256 amount) external returns (bool) {
-        require(_minter == msg.sender, "DOES_NOT_HAVE_MINTER_ROLE");
+    function setDividendPoints(address who, uint256 amount) external onlyMinter returns (bool) {
         _shareBalances[who].lastDividendPoints = amount;
         return true;
     }
 
-    function mintShares(address who, uint256 amount) external returns (bool) {
-        require(_minter == msg.sender, "DOES_NOT_HAVE_MINTER_ROLE");
+    function changeMinter(address minter) external onlyOwner {
+        _minter = minter;
+    }
+
+    function mintShares(address who, uint256 amount) external onlyMinter returns (bool) {
         _shareBalances[who].balance = _shareBalances[who].balance.add(amount);
         _totalSupply = _totalSupply.add(amount);
-        
         return true;
     }
 
@@ -78,11 +82,6 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         return _shareBalances[who].lastDividendPoints;
     }
 
-    function changeMinter(address minter) public onlyOwner {
-        require(minter != _minter, "MINTER_MUST_BE_DIFFERENT");
-        _minter = minter;
-    }
-
     function initialize(address owner_)
         public
         initializer
@@ -90,7 +89,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         ERC20Detailed.initialize("Seigniorage Shares", "SHARE", uint8(DECIMALS));
         Ownable.initialize(owner_);
 
-        initializedDollar = false;
+        _initializedDollar = false;
 
         _totalSupply = INITIAL_SHARE_SUPPLY;
         _shareBalances[owner_].balance = _totalSupply;
@@ -100,13 +99,13 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
 
     // instantiate dollar
     function initializeDollar(address dollarAddress) public onlyOwner {
-        require(initializedDollar == false, "ALREADY_INITIALIZED");
-        dollars = IDollars(dollarAddress);
-        initializedDollar = true;
+        require(_initializedDollar == false, "ALREADY_INITIALIZED");
+        Dollars = IDollars(dollarAddress);
+        _initializedDollar = true;
     }
 
      /**
-     * @return The total number of dollars.
+     * @return The total number of Dollars.
      */
     function totalSupply()
         public
@@ -252,9 +251,9 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
 
     // attach this to any action to auto claim
     modifier updateAccount(address account) {
-        require(initializedDollar == true, "DOLLAR_NEEDS_INITIALIZATION");
+        require(_initializedDollar == true, "DOLLAR_NEEDS_INITIALIZATION");
 
-        dollars.externalClaimDividends(account);
+        Dollars.claimDividends(account);
         _;
     }
 }
