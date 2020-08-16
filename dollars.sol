@@ -383,6 +383,13 @@ contract Dollars is ERC20Detailed, Ownable {
         return true;
     }
 
+    function destroyUSD(uint256 amount) external updateAccount(msg.sender) {
+        require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
+        require(amount <= _dollarBalances[msg.sender], 'INSUFFICIENT_DOLLAR_BALANCE');
+        _totalSupply = _totalSupply.sub(amount);
+        _dollarBalances[account] = _dollarBalances[account].sub(amount);
+    }
+
     // amount in is 10 ** 9 decimals
     function burn(uint256 amount) public updateAccount(msg.sender) {
         require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
