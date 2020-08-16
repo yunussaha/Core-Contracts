@@ -91,7 +91,7 @@ contract DollarsPolicy is Ownable {
 
         uint256 ethUsdcPrice = ethPerUsdcOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);        // 10^18 decimals ropsten, 10^6 mainnet
         uint256 ethUsdPrice = ethPerUsdOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);          // 10^9 decimals
-        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 9)                          // 10^18 decimals
+        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 9)                          // 10^18 decimals, 10**9 ropsten, 10**21 on mainnet
             .div(ethUsdPrice);
         uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * 10 ** 9);        // 10^9 decimals
         uint256 shareExchangeRate = sharePrice.mul(dollarCoinExchangeRate).div(10 ** 9);    // 10^18 decimals
@@ -114,8 +114,8 @@ contract DollarsPolicy is Ownable {
         }
 
         // check on the contraction side
-        if (supplyDelta < 0 && dollars.totalSupply().add(uint256(supplyDelta.abs())) > MAX_SUPPLY) {
-            supplyDelta = (MAX_SUPPLY.sub(dollars.totalSupply())).toInt256Safe();
+        if (supplyDelta < 0 && dollars.getRemainingDollarsToBeBurned().add(uint256(supplyDelta.abs())) > MAX_SUPPLY) {
+            supplyDelta = (MAX_SUPPLY.sub(dollars.getRemainingDollarsToBeBurned())).toInt256Safe();
         }
 
         uint256 supplyAfterRebase;
@@ -159,6 +159,29 @@ contract DollarsPolicy is Ownable {
     {
         require(rebaseLag_ > 0);
         rebaseLag = rebaseLag_;
+    }
+
+    function initializeOracles(
+        address sharesPerUsdOracleAddress,
+        address ethPerUsdOracleAddress,
+        address ethPerUsdcOracleAddress
+    ) external onlyOwner {
+        require(initializedOracle == false, 'ALREADY_INITIALIZED_ORACLE');
+        sharesPerUsdOracle = IDecentralizedOracle(sharesPerUsdOracleAddress);
+        ethPerUsdOracle = IDecentralizedOracle(ethPerUsdOracleAddress);
+        ethPerUsdcOracle = IDecentralizedOracle(ethPerUsdcOracleAddress);
+
+        initializedOracle = true;
+    }
+
+    function changeOracles(
+        address sharesPerUsdOracleAddress,
+        address ethPerUsdOracleAddress,
+        address ethPerUsdcOracleAddress
+    ) external onlyOwner {
+        sharesPerUsdOracle = IDecentralizedOracle(sharesPerUsdOracleAddress);
+        ethPerUsdOracle = IDecentralizedOracle(ethPerUsdOracleAddress);
+        ethPerUsdcOracle = IDecentralizedOracle(ethPerUsdcOracleAddress);
     }
 
     function setWethAddress(address wethAddress)
@@ -207,29 +230,6 @@ contract DollarsPolicy is Ownable {
         epoch = 0;
 
         dollars = dollars_;
-    }
-
-    function initializeOracles(
-        address sharesPerUsdOracleAddress,
-        address ethPerUsdOracleAddress,
-        address ethPerUsdcOracleAddress
-    ) public onlyOwner {
-        require(initializedOracle == false, 'ALREADY_INITIALIZED_ORACLE');
-        sharesPerUsdOracle = IDecentralizedOracle(sharesPerUsdOracleAddress);
-        ethPerUsdOracle = IDecentralizedOracle(ethPerUsdOracleAddress);
-        ethPerUsdcOracle = IDecentralizedOracle(ethPerUsdcOracleAddress);
-
-        initializedOracle = true;
-    }
-
-    function changeOracles(
-        address sharesPerUsdOracleAddress,
-        address ethPerUsdOracleAddress,
-        address ethPerUsdcOracleAddress
-    ) public onlyOwner {
-        sharesPerUsdOracle = IDecentralizedOracle(sharesPerUsdOracleAddress);
-        ethPerUsdOracle = IDecentralizedOracle(ethPerUsdOracleAddress);
-        ethPerUsdcOracle = IDecentralizedOracle(ethPerUsdcOracleAddress);
     }
 
     function inRebaseWindow() public view returns (bool) {
