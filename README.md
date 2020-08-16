@@ -1,3 +1,5 @@
+![](https://github.com/Dollar-Protocol/Core-Contracts/blob/master/assets/pair.svg)
+
 # Dollar Protocol
 
 A better elastic money supply protocol, powered by two tokens.
