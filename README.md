@@ -4,6 +4,18 @@
 
 A better elastic money supply protocol, powered by two tokens.
 
+# Main Contracts
+* dollars.sol
+* dollarsPolicy.sol
+* orchestrator.sol
+* seigniorageShares.sol
+
+# Oracle Contracts
+* decentralizedOracle.sol
+
+# Mining
+* SeigniorageMining.sol
+
 ## Origins
 This dual token elastic money suppply protocol is an experiment to create a truly *good* money, a money owned by the people, not by governments.
 
