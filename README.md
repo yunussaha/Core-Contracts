@@ -23,6 +23,15 @@ We took inspiration from [Robert Sam's seigniorage shares paper](https://github.
 
 In this way, we preserve the stablecoin price AND the purchasing power of the wallet.
 
+## Ecosystem Addresses
+Dollar
+DollarPolicy
+Orchestrator
+SeigniorageShares
+Liquidity Mining Contract for UniswapV2
+Liquidity Mining Reserve for future (Uniswap V3 and beyond)
+Team
+
 ## Next steps
 We will get a respected 3rd party security firm to audit the code. The protocol will then be launched on Uniswap and other exchanges.
 
