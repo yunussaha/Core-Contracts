@@ -32,7 +32,7 @@ In this way, we preserve the stablecoin price AND the purchasing power of the wa
 * Decentralized Oracle ETH-USD
 * Decentralized Oracle ETH-USDC
 * Liquidity Mining Contract for UniswapV2
-* Liquidity Mining Reserve for future (Uniswap V3 and beyond)
+* Liquidity Mining Reserve for future (Uniswap V3 and beyond) - Multisig: 0x01b6e2C30B27b3D2E15595E89F2115B139Eaf597
 * Team
 
 ## Next steps
