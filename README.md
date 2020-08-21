@@ -33,7 +33,7 @@ In this way, we preserve the stablecoin price AND the purchasing power of the wa
 * Decentralized Oracle ETH-USDC
 * Liquidity Mining Contract for UniswapV2
 * Liquidity Mining Reserve for future (Uniswap V3 and beyond) - Multisig: 0x01b6e2C30B27b3D2E15595E89F2115B139Eaf597
-* Team
+* Team: 0xf23A63b68671bc75E1e6644f2aBaCB0c1d8B5BB0
 
 ## Next steps
 We will get a respected 3rd party security firm to audit the code. The protocol will then be launched on Uniswap and other exchanges.
