@@ -24,18 +24,15 @@ We took inspiration from [Robert Sam's seigniorage shares paper](https://github.
 In this way, we preserve the stablecoin price AND the purchasing power of the wallet.
 
 ## Ecosystem Addresses
-* Dollar
-* DollarPolicy
-* Orchestrator
-* SeigniorageShares
-* Decentralized Oracle SHR-USD
-* Decentralized Oracle ETH-USD
-* Decentralized Oracle ETH-USDC
-* Liquidity Mining Contract for UniswapV2
+* Dollar: 0xd233D1f6FD11640081aBB8db125f722b5dc729dc
+* DollarPolicy: 0xEB5d3925Ef594b79C9C29d1453Bb6B32F676F7EA
+* Orchestrator: 0xB4BB40262E189582151D8a7ef21e4534A0259644
+* SeigniorageShares: 0x6b583cf4aba7bf9d6f8a51b3f1f7c7b2ce59bf15
+* Decentralized Oracle SHR-USD: 0x957e7DB886b3970F45cFD13D37DBF0724D4ce05B
+* Decentralized Oracle ETH-USD: 0xa31659dD4B401DB48cc26699f0426B55F86a02c0
+* Decentralized Oracle ETH-USDC: 0x9bd4512Cf8e87Fc8367C4405bB97bD6061e2aF0C
+* Liquidity Mining Contract for UniswapV2 USD-ETH: 0xdefa7eD7cc5a36089B711bCB11978E64c833DCb7
 * Liquidity Mining Reserve for future (Uniswap V3 and beyond) - Multisig: 0x01b6e2C30B27b3D2E15595E89F2115B139Eaf597
 * Team: 0xf23A63b68671bc75E1e6644f2aBaCB0c1d8B5BB0
-
-## Next steps
-We will get a respected 3rd party security firm to audit the code. The protocol will then be launched on Uniswap and other exchanges.
 
 To learn more about the project, please visit [https://dollarprotocol.com](https://dollarprotocol.com)
