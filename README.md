@@ -31,7 +31,8 @@ In this way, we preserve the stablecoin price AND the purchasing power of the wa
 * Decentralized Oracle SHR-USD: [0x957e7DB886b3970F45cFD13D37DBF0724D4ce05B](http://etherscan.io/address/0x957e7DB886b3970F45cFD13D37DBF0724D4ce05B)
 * Decentralized Oracle ETH-USD: [0xa31659dD4B401DB48cc26699f0426B55F86a02c0](http://etherscan.io/address/0xa31659dD4B401DB48cc26699f0426B55F86a02c0)
 * Decentralized Oracle ETH-USDC: [0x9bd4512Cf8e87Fc8367C4405bB97bD6061e2aF0C](http://etherscan.io/address/0x9bd4512Cf8e87Fc8367C4405bB97bD6061e2aF0C)
-* Liquidity Mining Contract for UniswapV2 USD-ETH: [0xdefa7eD7cc5a36089B711bCB11978E64c833DCb7](http://etherscan.io/address/0xdefa7eD7cc5a36089B711bCB11978E64c833DCb7)
+* Liquidity Mining Contract for UniswapV2 ETH-USD: [0xdefa7eD7cc5a36089B711bCB11978E64c833DCb7](http://etherscan.io/address/0xdefa7eD7cc5a36089B711bCB11978E64c833DCb7)
+* Liquidity Mining Contract for UniswapV2 YFI-USD: [0x1e1Ea74923532580f0B4008bD81D369753864545](http://etherscan.io/address/0x1e1Ea74923532580f0B4008bD81D369753864545)
 * Liquidity Mining Reserve for future (Uniswap V3 and beyond) - Multisig: [0x01b6e2C30B27b3D2E15595E89F2115B139Eaf597](http://etherscan.io/address/0x01b6e2C30B27b3D2E15595E89F2115B139Eaf597)
 * Team: [0xf23A63b68671bc75E1e6644f2aBaCB0c1d8B5BB0](http://etherscan.io/address/0xf23A63b68671bc75E1e6644f2aBaCB0c1d8B5BB0)
 
