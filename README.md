@@ -23,6 +23,9 @@ We took inspiration from [Robert Sam's seigniorage shares paper](https://github.
 
 In this way, we preserve the stablecoin price AND the purchasing power of the wallet.
 
+## Security
+We ran internally a host of security tests, including Echidna, Manticore, Mythril OSS, Securify and Slither. The results of such reports are in the security folder.
+
 ## Ecosystem Addresses
 * Dollar: [0xd233D1f6FD11640081aBB8db125f722b5dc729dc](http://etherscan.io/address/0xd233D1f6FD11640081aBB8db125f722b5dc729dc)
 * DollarPolicy: [0xEB5d3925Ef594b79C9C29d1453Bb6B32F676F7EA](http://etherscan.io/address/0xEB5d3925Ef594b79C9C29d1453Bb6B32F676F7EA)
