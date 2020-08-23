@@ -87,6 +87,8 @@ contract Dollars is ERC20Detailed, Ownable {
 
     uint256 public minimumBonusThreshold;
 
+    bool reEntrancyMutex;
+
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
      */
@@ -105,6 +107,13 @@ contract Dollars is ERC20Detailed, Ownable {
         validDiscount(discount)
     {
         burningDiscount = discount;
+    }
+
+    function setMutex(bool _val)
+        external
+        onlyOwner
+    {
+        reEntrancyMutex = _val;
     }
 
     function setDefaultDiscount(uint256 discount)
@@ -241,6 +250,9 @@ contract Dollars is ERC20Detailed, Ownable {
     // if user is owned, we pay out immedietly
     // if user is not owned, we prevent them from claiming until the next rebase
     modifier updateAccount(address account) {
+        require(!reEntrancyMutex);
+        reEntrancyMutex = true;
+
         uint256 owing = dividendsOwing(account);
 
         if (owing > 0) {
@@ -249,6 +261,8 @@ contract Dollars is ERC20Detailed, Ownable {
         }
 
         Shares.setDividendPoints(account, _totalDividendPoints);
+
+        reEntrancyMutex = false;
 
         emit LogClaim(account, owing);
         _;
@@ -459,8 +473,11 @@ contract Dollars is ERC20Detailed, Ownable {
     function _burn(address account, uint256 amount)
         internal 
     {
+        require(!reEntrancyMutex);
         _totalSupply = _totalSupply.sub(amount);
         _dollarBalances[account] = _dollarBalances[account].sub(amount);
+        
+        reEntrancyMutex = true;
 
         uint256 usdPerShare = DollarPolicy.getUsdSharePrice(); // 1 share = x dollars
         usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(100 * 10 ** 9)); // 10^9
@@ -468,6 +485,8 @@ contract Dollars is ERC20Detailed, Ownable {
 
         Shares.mintShares(account, sharesToMint);
         _remainingDollarsToBeBurned = _remainingDollarsToBeBurned.sub(amount);
+
+        reEntrancyMutex = false;
 
         emit Transfer(account, address(0), amount);
         emit LogBurn(account, amount);
