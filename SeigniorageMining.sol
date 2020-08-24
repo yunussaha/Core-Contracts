@@ -327,6 +327,22 @@ contract SeigniorageMining is IStaking, Ownable {
         return address(getStakingToken());
     }
 
+    function totalUserShareRewards(address user) external view returns (uint256) {
+        UserTotals storage totals = _userTotals[user];
+
+        return (_totalStakingShareSeconds > 0)
+            ? totalUnlocked().mul(totals.stakingShareSeconds).div(_totalStakingShareSeconds)
+            : 0;
+    }
+
+    function totalUserDollarRewards(address user) external view returns (uint256) {
+        UserTotals storage totals = _userTotals[user];
+
+        return (_totalStakingShareSeconds > 0)
+            ? totalUnlockedDollars().mul(totals.stakingShareSeconds).div(_totalStakingShareSeconds)
+            : 0;
+    }
+
     /**
      * @dev A globally callable function to update the accounting state of the system.
      *      Global state and state for the caller are updated.
@@ -414,6 +430,10 @@ contract SeigniorageMining is IStaking, Ownable {
      */
     function unlockScheduleCount() public view returns (uint256) {
         return unlockSchedules.length;
+    }
+
+    function changeStakingToken(IERC20 stakingToken) external onlyOwner {
+        _stakingPool = new TokenPool(stakingToken);
     }
 
     /**
