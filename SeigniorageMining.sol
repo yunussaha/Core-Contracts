@@ -4,9 +4,9 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-import "./IStaking.sol";
-import "./TokenPool.sol";
-import "./MinePool.sol";
+import "./interface/IStaking.sol";
+import "./lib/TokenPool.sol";
+import "./lib/MinePool.sol";
 
 /**
  * @title Dollar Rewards
