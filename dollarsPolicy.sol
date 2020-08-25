@@ -91,7 +91,7 @@ contract DollarsPolicy is Ownable {
 
         uint256 ethUsdcPrice = ethPerUsdcOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);        // 10^18 decimals ropsten, 10^6 mainnet
         uint256 ethUsdPrice = ethPerUsdOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);          // 10^9 decimals
-        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 9)                          // 10^18 decimals, 10**9 ropsten, 10**21 on mainnet
+        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 21)                         // 10^18 decimals, 10**9 ropsten, 10**21 on mainnet
             .div(ethUsdPrice);
         uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * 10 ** 9);        // 10^9 decimals
         uint256 shareExchangeRate = sharePrice.mul(dollarCoinExchangeRate).div(10 ** 9);    // 10^18 decimals
@@ -121,8 +121,8 @@ contract DollarsPolicy is Ownable {
         uint256 supplyAfterRebase;
 
         if (supplyDelta < 0) { // contraction, we send the amount of shares to mint
-            uint256 sharesToMint = uint256(supplyDelta.abs());
-            supplyAfterRebase = dollars.rebase(epoch, (sharesToMint).toInt256Safe().mul(-1));
+            uint256 dollarsToBurn = uint256(supplyDelta.abs());
+            supplyAfterRebase = dollars.rebase(epoch, (dollarsToBurn).toInt256Safe().mul(-1));
         } else { // expansion, we send the amount of dollars to mint
             supplyAfterRebase = dollars.rebase(epoch, supplyDelta);
         }
