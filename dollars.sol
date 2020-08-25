@@ -6,6 +6,7 @@ import "./interface/ISeignorageShares.sol";
 import "openzeppelin-eth/contracts/math/SafeMath.sol";
 import "openzeppelin-eth/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-eth/contracts/ownership/Ownable.sol";
+import "openzeppelin-eth/contracts/utils/ReentrancyGuard.sol";
 
 interface IDollarPolicy {
     function getUsdSharePrice() external view returns (uint256 price);
@@ -15,7 +16,7 @@ interface IDollarPolicy {
  *  Dollar ERC20
  */
 
-contract Dollars is ERC20Detailed, Ownable {
+contract Dollars is ERC20Detailed, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeMathInt for int256;
 
@@ -87,7 +88,7 @@ contract Dollars is ERC20Detailed, Ownable {
 
     uint256 public minimumBonusThreshold;
 
-    bool reEntrancyMutex;
+    bool reEntrancyMutex; // unusued
 
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
@@ -109,11 +110,19 @@ contract Dollars is ERC20Detailed, Ownable {
         burningDiscount = discount;
     }
 
-    function setMutex(bool _val)
+    // amount in is 10 ** 9 decimals
+    function burn(uint256 amount)
         external
-        onlyOwner
+        updateAccount(msg.sender)
+        nonReentrant
     {
-        reEntrancyMutex = _val;
+        require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
+        require(burningDiscount >= 0, 'DISCOUNT_NOT_VALID');
+        require(_remainingDollarsToBeBurned > 0, 'COIN_BURN_MUST_BE_GREATER_THAN_ZERO');
+        require(amount <= _dollarBalances[msg.sender], 'INSUFFICIENT_DOLLAR_BALANCE');
+        require(amount <= _remainingDollarsToBeBurned, 'AMOUNT_MUST_BE_LESS_THAN_OR_EQUAL_TO_REMAINING_COINS');
+
+        _burn(msg.sender, amount);
     }
 
     function setDefaultDiscount(uint256 discount)
@@ -250,9 +259,6 @@ contract Dollars is ERC20Detailed, Ownable {
     // if user is owned, we pay out immedietly
     // if user is not owned, we prevent them from claiming until the next rebase
     modifier updateAccount(address account) {
-        require(!reEntrancyMutex);
-        reEntrancyMutex = true;
-
         uint256 owing = dividendsOwing(account);
 
         if (owing > 0) {
@@ -261,8 +267,6 @@ contract Dollars is ERC20Detailed, Ownable {
         }
 
         Shares.setDividendPoints(account, _totalDividendPoints);
-
-        reEntrancyMutex = false;
 
         emit LogClaim(account, owing);
         _;
@@ -397,17 +401,6 @@ contract Dollars is ERC20Detailed, Ownable {
         return true;
     }
 
-    // amount in is 10 ** 9 decimals
-    function burn(uint256 amount) public updateAccount(msg.sender) {
-        require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
-        require(burningDiscount >= 0, 'DISCOUNT_NOT_VALID');
-        require(_remainingDollarsToBeBurned > 0, 'COIN_BURN_MUST_BE_GREATER_THAN_ZERO');
-        require(amount <= _dollarBalances[msg.sender], 'INSUFFICIENT_DOLLAR_BALANCE');
-        require(amount <= _remainingDollarsToBeBurned, 'AMOUNT_MUST_BE_LESS_THAN_OR_EQUAL_TO_REMAINING_COINS');
-
-        _burn(msg.sender, amount);
-    }
-
     /**
      * @dev Decrease the amount of tokens that an owner has allowed to a spender.
      *
@@ -473,20 +466,15 @@ contract Dollars is ERC20Detailed, Ownable {
     function _burn(address account, uint256 amount)
         internal 
     {
-        require(!reEntrancyMutex);
         _totalSupply = _totalSupply.sub(amount);
         _dollarBalances[account] = _dollarBalances[account].sub(amount);
-        
-        reEntrancyMutex = true;
 
         uint256 usdPerShare = DollarPolicy.getUsdSharePrice(); // 1 share = x dollars
         usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(100 * 10 ** 9)); // 10^9
         uint256 sharesToMint = amount.mul(10 ** 9).div(usdPerShare); // 10^9
-
-        Shares.mintShares(account, sharesToMint);
         _remainingDollarsToBeBurned = _remainingDollarsToBeBurned.sub(amount);
 
-        reEntrancyMutex = false;
+        Shares.mintShares(account, sharesToMint);
 
         emit Transfer(account, address(0), amount);
         emit LogBurn(account, amount);
