@@ -48,10 +48,6 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         return true;
     }
 
-    function changeMinter(address minter) external onlyOwner {
-        _minter = minter;
-    }
-
     function mintShares(address who, uint256 amount) external onlyMinter returns (bool) {
         _shareBalances[who].balance = _shareBalances[who].balance.add(amount);
         _totalSupply = _totalSupply.add(amount);
@@ -102,6 +98,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         require(_initializedDollar == false, "ALREADY_INITIALIZED");
         Dollars = IDollars(dollarAddress);
         _initializedDollar = true;
+        _minter = dollarAddress;
     }
 
      /**
