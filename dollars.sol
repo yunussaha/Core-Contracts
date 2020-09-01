@@ -6,7 +6,6 @@ import "./interface/ISeignorageShares.sol";
 import "openzeppelin-eth/contracts/math/SafeMath.sol";
 import "openzeppelin-eth/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-eth/contracts/ownership/Ownable.sol";
-import "openzeppelin-eth/contracts/utils/ReentrancyGuard.sol";
 
 interface IDollarPolicy {
     function getUsdSharePrice() external view returns (uint256 price);
@@ -16,7 +15,7 @@ interface IDollarPolicy {
  *  Dollar ERC20
  */
 
-contract Dollars is ERC20Detailed, Ownable, ReentrancyGuard {
+contract Dollars is ERC20Detailed, Ownable {
     using SafeMath for uint256;
     using SafeMathInt for int256;
 
@@ -88,7 +87,7 @@ contract Dollars is ERC20Detailed, Ownable, ReentrancyGuard {
 
     uint256 public minimumBonusThreshold;
 
-    bool reEntrancyMutex; // unusued
+    bool reEntrancyMutex;
 
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
@@ -114,8 +113,10 @@ contract Dollars is ERC20Detailed, Ownable, ReentrancyGuard {
     function burn(uint256 amount)
         external
         updateAccount(msg.sender)
-        nonReentrant
     {
+        require(!reEntrancyMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
+        reEntrancyMutex = true;
+
         require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
         require(burningDiscount >= 0, 'DISCOUNT_NOT_VALID');
         require(_remainingDollarsToBeBurned > 0, 'COIN_BURN_MUST_BE_GREATER_THAN_ZERO');
@@ -123,6 +124,8 @@ contract Dollars is ERC20Detailed, Ownable, ReentrancyGuard {
         require(amount <= _remainingDollarsToBeBurned, 'AMOUNT_MUST_BE_LESS_THAN_OR_EQUAL_TO_REMAINING_COINS');
 
         _burn(msg.sender, amount);
+
+        reEntrancyMutex = false;
     }
 
     function setDefaultDiscount(uint256 discount)
