@@ -190,6 +190,13 @@ contract Dollars is ERC20Detailed, Ownable {
         returns (uint256)
     {
         if (supplyDelta == 0) {
+            if (_remainingDollarsToBeBurned > minimumBonusThreshold) {
+                burningDiscount = burningDiscount.add(defaultDailyBonusDiscount) > _maxDiscount ?
+                    _maxDiscount : burningDiscount.add(defaultDailyBonusDiscount);
+            } else {
+                burningDiscount = defaultDiscount;
+            }
+
             emit LogRebase(epoch, _totalSupply);
             return _totalSupply;
         }
