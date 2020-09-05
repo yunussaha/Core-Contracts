@@ -259,10 +259,10 @@ contract DollarsPolicy is Ownable {
             return 30 * 10 ** 9;
         } else {
             if (supplyDelta < 0) {
-                uint256 dollarsToBurn = uint256(supplyDelta.abs());
-                return uint256(100 * 10 ** 9).sub((dollars.totalSupply().sub(1000000 * 10 ** 9)).div(500000 * 10 ** 9));
+                uint256 dollarsToBurn = uint256(supplyDelta.abs()); // 1.238453076e15
+                return uint256(100 * 10 ** 9).sub((dollars.totalSupply().sub(1000000 * 10 ** 9)).div(500000));
             } else {
-                return uint256(29).mul(dollars.totalSupply().sub(1000000 * 10 ** 9)).div(35000000 * 10 ** 9).add(1 * 10 ** 9);
+                return uint256(29).mul(dollars.totalSupply().sub(1000000 * 10 ** 9)).div(35000000).add(1 * 10 ** 9);
             }
         }
     }
