@@ -108,8 +108,12 @@ contract DollarsPolicy is Ownable {
         int256 supplyDelta = computeSupplyDelta(dollarCoinExchangeRate, targetRate);        // supplyDelta = 10^9 decimals
 
         // Apply the Dampening factor.
-        // supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
-        supplyDelta = supplyDelta.mul(10 ** 9).div(getAlgorithmicRebaseLag(supplyDelta).toInt256Safe()); // v 0.0.1
+        // supplyDelta = supplyDelta.mul(10 ** 9).div(rebaseLag.toInt256Safe());
+        uint256 algorithmicLag_ = getAlgorithmicRebaseLag(supplyDelta);
+        require(algorithmicLag_ > 0, "algorithmic rate must be positive");
+        rebaseLag = algorithmicLag_;
+
+        supplyDelta = supplyDelta.mul(10 ** 9).div(algorithmicLag_.toInt256Safe()); // v 0.0.1
 
         // check on the expansionary side
         if (supplyDelta > 0 && dollars.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
@@ -236,7 +240,7 @@ contract DollarsPolicy is Ownable {
 
         deviationThreshold = 5 * 10 ** (DECIMALS-2);
 
-        rebaseLag = 50;
+        rebaseLag = 50 * 10 ** 9;
         minRebaseTimeIntervalSec = 1 days;
         rebaseWindowOffsetSec = 63000;  // with stock market, 63000 for 1:30pm EST (debug)
         rebaseWindowLengthSec = 15 minutes;
