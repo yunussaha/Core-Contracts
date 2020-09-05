@@ -252,26 +252,26 @@ contract DollarsPolicy is Ownable {
         dollars = dollars_;
     }
 
-    function inRebaseWindow() public view returns (bool) {
-        return (
-            now.mod(minRebaseTimeIntervalSec) >= rebaseWindowOffsetSec &&
-            now.mod(minRebaseTimeIntervalSec) < (rebaseWindowOffsetSec.add(rebaseWindowLengthSec))
-        );
-    }
-
     // takes current marketcap of USD and calculates the algorithmic rebase lag
     // returns 10 ** 9 rebase lag factor
-    function getAlgorithmicRebaseLag(int256 supplyDelta) private view returns (uint256) {
+    function getAlgorithmicRebaseLag(int256 supplyDelta) public view returns (uint256) {
         if (dollars.totalSupply() >= 30000000 * 10 ** 9) {
             return 30 * 10 ** 9;
         } else {
             if (supplyDelta < 0) {
                 uint256 dollarsToBurn = uint256(supplyDelta.abs());
-                return (100 * 10 ** 9).sub((dollars.totalSupply().sub(1000000 * 10 ** 9)).div(500000 * 10 ** 9));
+                return uint256(100 * 10 ** 9).sub((dollars.totalSupply().sub(1000000 * 10 ** 9)).div(500000 * 10 ** 9));
             } else {
-                return (29).mul(dollars.totalSupply().sub(1000000 * 10 ** 9)).div(35000000 * 10 ** 9).add(1 * 10 ** 9);
+                return uint256(29).mul(dollars.totalSupply().sub(1000000 * 10 ** 9)).div(35000000 * 10 ** 9).add(1 * 10 ** 9);
             }
         }
+    }
+
+    function inRebaseWindow() public view returns (bool) {
+        return (
+            now.mod(minRebaseTimeIntervalSec) >= rebaseWindowOffsetSec &&
+            now.mod(minRebaseTimeIntervalSec) < (rebaseWindowOffsetSec.add(rebaseWindowLengthSec))
+        );
     }
 
     function computeSupplyDelta(uint256 rate, uint256 targetRate)
