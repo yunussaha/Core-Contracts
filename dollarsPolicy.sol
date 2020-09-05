@@ -108,7 +108,8 @@ contract DollarsPolicy is Ownable {
         int256 supplyDelta = computeSupplyDelta(dollarCoinExchangeRate, targetRate);        // supplyDelta = 10^9 decimals
 
         // Apply the Dampening factor.
-        supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
+        // supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
+        supplyDelta = supplyDelta.mul(10 ** 9).div(getAlgorithmicRebaseLag(supplyDelta).toInt256Safe()); // v 0.0.1
 
         // check on the expansionary side
         if (supplyDelta > 0 && dollars.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
@@ -252,6 +253,21 @@ contract DollarsPolicy is Ownable {
             now.mod(minRebaseTimeIntervalSec) >= rebaseWindowOffsetSec &&
             now.mod(minRebaseTimeIntervalSec) < (rebaseWindowOffsetSec.add(rebaseWindowLengthSec))
         );
+    }
+
+    // takes current marketcap of USD and calculates the algorithmic rebase lag
+    // returns 10 ** 9 rebase lag factor
+    function getAlgorithmicRebaseLag(int256 supplyDelta) private view returns (uint256) {
+        if (dollars.totalSupply() >= 30000000 * 10 ** 9) {
+            return 30 * 10 ** 9;
+        } else {
+            if (supplyDelta < 0) {
+                uint256 dollarsToBurn = uint256(supplyDelta.abs());
+                return (100 * 10 ** 9).sub((dollars.totalSupply().sub(1000000 * 10 ** 9)).div(500000 * 10 ** 9));
+            } else {
+                return (29).mul(dollars.totalSupply().sub(1000000 * 10 ** 9)).div(35000000 * 10 ** 9).add(1 * 10 ** 9);
+            }
+        }
     }
 
     function computeSupplyDelta(uint256 rate, uint256 targetRate)
