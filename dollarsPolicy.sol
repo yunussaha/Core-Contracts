@@ -67,6 +67,8 @@ contract DollarsPolicy is Ownable {
         _;
     }
 
+    uint256 public minimumDollarCirculation;
+
     function getUsdSharePrice() external view returns (uint256) {
         sharesPerUsdOracle.update();
 
@@ -75,10 +77,10 @@ contract DollarsPolicy is Ownable {
     }
 
     function rebase() external onlyOrchestrator {
-        require(inRebaseWindow());
+        require(inRebaseWindow(), "OUTISDE_REBASE");
         require(initializedOracle == true, 'ORACLE_NOT_INITIALIZED');
 
-        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now);
+        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now, "MIN_TIME_NOT_MET");
 
         lastRebaseTimestampSec = now.sub(
             now.mod(minRebaseTimeIntervalSec)).add(rebaseWindowOffsetSec);
@@ -116,6 +118,11 @@ contract DollarsPolicy is Ownable {
         // check on the contraction side
         if (supplyDelta < 0 && dollars.getRemainingDollarsToBeBurned().add(uint256(supplyDelta.abs())) > MAX_SUPPLY) {
             supplyDelta = (MAX_SUPPLY.sub(dollars.getRemainingDollarsToBeBurned())).toInt256Safe();
+        }
+
+        // set minimum floor
+        if (supplyDelta < 0 && dollars.totalSupply().sub(dollars.getRemainingDollarsToBeBurned().add(uint256(supplyDelta.abs()))) < minimumDollarCirculation) {
+            supplyDelta = (dollars.totalSupply().sub(dollars.getRemainingDollarsToBeBurned()).sub(minimumDollarCirculation)).toInt256Safe();
         }
 
         uint256 supplyAfterRebase;
@@ -198,6 +205,13 @@ contract DollarsPolicy is Ownable {
         SHARE_ADDRESS = shareAddress;
     }
 
+    function setMinimumDollarCirculation(uint256 minimumDollarCirculation_)
+        external
+        onlyOwner
+    {
+        minimumDollarCirculation = minimumDollarCirculation_;
+    }
+
     function setRebaseTimingParameters(
         uint256 minRebaseTimeIntervalSec_,
         uint256 rebaseWindowOffsetSec_,
@@ -228,6 +242,7 @@ contract DollarsPolicy is Ownable {
         lastRebaseTimestampSec = 0;
         cpi = 1 * 10 ** 18;
         epoch = 0;
+        minimumDollarCirculation = 1000000 * 10 ** 9; // 1M minimum dollar circulation
 
         dollars = dollars_;
     }
