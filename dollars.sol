@@ -88,6 +88,7 @@ contract Dollars is ERC20Detailed, Ownable {
     uint256 public minimumBonusThreshold;
 
     bool reEntrancyMutex;
+    bool reEntrancyRebaseMutex;
 
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
@@ -189,6 +190,8 @@ contract Dollars is ERC20Detailed, Ownable {
         whenRebaseNotPaused
         returns (uint256)
     {
+        reEntrancyRebaseMutex = true;
+
         if (supplyDelta == 0) {
             if (_remainingDollarsToBeBurned > minimumBonusThreshold) {
                 burningDiscount = burningDiscount.add(defaultDailyBonusDiscount) > _maxDiscount ?
@@ -229,6 +232,7 @@ contract Dollars is ERC20Detailed, Ownable {
             }
         }
 
+        reEntrancyRebaseMutex = false;
         return _totalSupply;
     }
 
@@ -326,6 +330,7 @@ contract Dollars is ERC20Detailed, Ownable {
         updateAccount(to)
         returns (bool)
     {
+        require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
         _dollarBalances[msg.sender] = _dollarBalances[msg.sender].sub(value);
         _dollarBalances[to] = _dollarBalances[to].add(value);
         emit Transfer(msg.sender, to, value);
@@ -360,6 +365,8 @@ contract Dollars is ERC20Detailed, Ownable {
         updateAccount(to)
         returns (bool)
     {
+        require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
+
         _allowedDollars[from][msg.sender] = _allowedDollars[from][msg.sender].sub(value);
 
         _dollarBalances[from] = _dollarBalances[from].sub(value);
