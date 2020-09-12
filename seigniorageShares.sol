@@ -43,14 +43,20 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
     mapping(address=>Account) private _shareBalances;
     mapping (address => mapping (address => uint256)) private _allowedShares;
 
+    bool reEntrancyMintMutex;
+
     function setDividendPoints(address who, uint256 amount) external onlyMinter returns (bool) {
         _shareBalances[who].lastDividendPoints = amount;
         return true;
     }
 
     function mintShares(address who, uint256 amount) external onlyMinter returns (bool) {
+        reEntrancyMintMutex = true;
+
         _shareBalances[who].balance = _shareBalances[who].balance.add(amount);
         _totalSupply = _totalSupply.add(amount);
+
+        reEntrancyMintMutex = false;
         return true;
     }
 
@@ -133,6 +139,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         validRecipient(to)
         returns (bool)
     {
+        require(!reEntrancyMintMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
         _shareBalances[msg.sender].balance = _shareBalances[msg.sender].balance.sub(value);
         _shareBalances[to].balance = _shareBalances[to].balance.add(value);
         emit Transfer(msg.sender, to, value);
@@ -167,6 +174,8 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         updateAccount(to)
         returns (bool)
     {
+        require(!reEntrancyMintMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
+
         _allowedShares[from][msg.sender] = _allowedShares[from][msg.sender].sub(value);
 
         _shareBalances[from].balance = _shareBalances[from].balance.sub(value);
