@@ -91,7 +91,7 @@ contract Dollars is ERC20Detailed, Ownable {
     bool reEntrancyRebaseMutex;
 
     bytes4 private constant UNISWAP_SYNC = bytes4(keccak256(bytes('sync()')));
-    address private constant SHARE_USD_UNISWAPV2 = '0xf1603432a96cb371f03d77501d1d7f55070cf8cc';
+    address public uniswapV2Pool;
 
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
@@ -103,6 +103,13 @@ contract Dollars is ERC20Detailed, Ownable {
         monetaryPolicy = monetaryPolicy_;
         DollarPolicy = IDollarPolicy(monetaryPolicy_);
         emit LogMonetaryPolicyUpdated(monetaryPolicy_);
+    }
+
+    function setUniswapV2SyncAddress(address uniswapV2Pair_)
+        external
+        onlyOwner
+    {
+        uniswapV2Pool = uniswapV2Pair_;
     }
 
     function setBurningDiscount(uint256 discount)
@@ -229,7 +236,7 @@ contract Dollars is ERC20Detailed, Ownable {
         } else {
             disburse(uint256(supplyDelta));
 
-            SHARE_USD_UNISWAPV2.call(abi.encodeWithSelector(UNISWAP_SYNC));
+            uniswapV2Pool.call(abi.encodeWithSelector(UNISWAP_SYNC));
 
             emit LogRebase(epoch, _totalSupply);
 
