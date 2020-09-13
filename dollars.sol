@@ -90,7 +90,6 @@ contract Dollars is ERC20Detailed, Ownable {
     bool reEntrancyMutex;
     bool reEntrancyRebaseMutex;
 
-    bytes4 private constant UNISWAP_SYNC = bytes4(keccak256(bytes('sync()')));
     address public uniswapV2Pool;
 
     /**
@@ -236,7 +235,7 @@ contract Dollars is ERC20Detailed, Ownable {
         } else {
             disburse(uint256(supplyDelta));
 
-            uniswapV2Pool.call(abi.encodeWithSelector(UNISWAP_SYNC));
+            uniswapV2Pool.call(abi.encodeWithSignature('sync()'));
 
             emit LogRebase(epoch, _totalSupply);
 
