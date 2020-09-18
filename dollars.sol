@@ -2,7 +2,7 @@ pragma solidity >=0.4.24;
 
 import "./lib/UInt256Lib.sol";
 import "./lib/SafeMathInt.sol";
-import "./interface/ISeignorageShares.sol";
+import "./interface/ISeigniorageShares.sol";
 import "openzeppelin-eth/contracts/math/SafeMath.sol";
 import "openzeppelin-eth/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-eth/contracts/ownership/Ownable.sol";
@@ -58,7 +58,6 @@ contract Dollars is ERC20Detailed, Ownable {
     uint256 private _maxDiscount;
 
     modifier validDiscount(uint256 discount) {
-        require(discount >= 0, 'POSITIVE_DISCOUNT');            // 0%
         require(discount <= _maxDiscount, 'DISCOUNT_TOO_HIGH');
         _;
     }
@@ -72,7 +71,7 @@ contract Dollars is ERC20Detailed, Ownable {
     uint256 private _totalDividendPoints;
     uint256 private _unclaimedDividends;
 
-    ISeigniorageShares Shares;
+    ISeigniorageShares shares;
 
     mapping(address => uint256) private _dollarBalances;
 
@@ -80,7 +79,7 @@ contract Dollars is ERC20Detailed, Ownable {
     // it's fully paid.
     mapping (address => mapping (address => uint256)) private _allowedDollars;
 
-    IDollarPolicy DollarPolicy;
+    IDollarPolicy dollarPolicy;
     uint256 public burningDiscount; // percentage (10 ** 9 Decimals)
     uint256 public defaultDiscount; // discount on first negative rebase
     uint256 public defaultDailyBonusDiscount; // how much the discount increases per day for consecutive contractions
@@ -100,7 +99,7 @@ contract Dollars is ERC20Detailed, Ownable {
         onlyOwner
     {
         monetaryPolicy = monetaryPolicy_;
-        DollarPolicy = IDollarPolicy(monetaryPolicy_);
+        dollarPolicy = IDollarPolicy(monetaryPolicy_);
         emit LogMonetaryPolicyUpdated(monetaryPolicy_);
     }
 
@@ -109,6 +108,13 @@ contract Dollars is ERC20Detailed, Ownable {
         onlyOwner
     {
         uniswapV2Pool = uniswapV2Pair_;
+    }
+
+    function test()
+        external
+        onlyOwner
+    {
+        uniswapV2Pool.call(abi.encodeWithSignature('sync()'));
     }
 
     function setBurningDiscount(uint256 discount)
@@ -127,9 +133,8 @@ contract Dollars is ERC20Detailed, Ownable {
         require(!reEntrancyMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
         reEntrancyMutex = true;
 
-        require(amount > 0, 'AMOUNT_MUST_BE_POSITIVE');
-        require(burningDiscount >= 0, 'DISCOUNT_NOT_VALID');
-        require(_remainingDollarsToBeBurned > 0, 'COIN_BURN_MUST_BE_GREATER_THAN_ZERO');
+        require(amount != 0, 'AMOUNT_MUST_BE_POSITIVE');
+        require(_remainingDollarsToBeBurned != 0, 'COIN_BURN_MUST_BE_GREATER_THAN_ZERO');
         require(amount <= _dollarBalances[msg.sender], 'INSUFFICIENT_DOLLAR_BALANCE');
         require(amount <= _remainingDollarsToBeBurned, 'AMOUNT_MUST_BE_LESS_THAN_OR_EQUAL_TO_REMAINING_COINS');
 
@@ -183,7 +188,6 @@ contract Dollars is ERC20Detailed, Ownable {
         external
         onlyOwner
     {
-        require(minimum >= 0, 'POSITIVE_MINIMUM');
         require(minimum < _totalSupply, 'MINIMUM_TOO_HIGH');
         minimumBonusThreshold = minimum;
     }
@@ -200,23 +204,23 @@ contract Dollars is ERC20Detailed, Ownable {
         returns (uint256)
     {
         reEntrancyRebaseMutex = true;
+        uint256 burningDefaultDiscount = burningDiscount.add(defaultDailyBonusDiscount);
 
         if (supplyDelta == 0) {
             if (_remainingDollarsToBeBurned > minimumBonusThreshold) {
-                burningDiscount = burningDiscount.add(defaultDailyBonusDiscount) > _maxDiscount ?
-                    _maxDiscount : burningDiscount.add(defaultDailyBonusDiscount);
+
+                burningDiscount = burningDefaultDiscount > _maxDiscount ? _maxDiscount : burningDefaultDiscount;
             } else {
                 burningDiscount = defaultDiscount;
             }
 
             emit LogRebase(epoch, _totalSupply);
-            return _totalSupply;
-        }
-
-        if (supplyDelta < 0) {
+        } else if (supplyDelta < 0) {
             uint256 dollarsToBurn = uint256(supplyDelta.abs());
-            if (dollarsToBurn > _totalSupply.div(10)) { // maximum contraction is 10% of the total USD Supply
-                dollarsToBurn = _totalSupply.div(10);
+            uint256 tenPercent = _totalSupply.div(10);
+
+            if (dollarsToBurn > tenPercent) { // maximum contraction is 10% of the total USD Supply
+                dollarsToBurn = tenPercent;
             }
 
             if (dollarsToBurn.add(_remainingDollarsToBeBurned) > _totalSupply) {
@@ -224,8 +228,8 @@ contract Dollars is ERC20Detailed, Ownable {
             }
 
             if (_remainingDollarsToBeBurned > minimumBonusThreshold) {
-                burningDiscount = burningDiscount.add(defaultDailyBonusDiscount) > _maxDiscount ?
-                    _maxDiscount : burningDiscount.add(defaultDailyBonusDiscount);
+                burningDiscount = burningDefaultDiscount > _maxDiscount ?
+                    _maxDiscount : burningDefaultDiscount;
             } else {
                 burningDiscount = defaultDiscount; // default 1%
             }
@@ -259,7 +263,7 @@ contract Dollars is ERC20Detailed, Ownable {
         _totalSupply = INITIAL_DOLLAR_SUPPLY;
 
         sharesAddress = seigniorageAddress;
-        Shares = ISeigniorageShares(seigniorageAddress);
+        shares = ISeigniorageShares(seigniorageAddress);
 
         _dollarBalances[owner_] = _totalSupply;
         _maxDiscount = 50 * 10 ** 9; // 50%
@@ -272,9 +276,9 @@ contract Dollars is ERC20Detailed, Ownable {
     }
 
     function dividendsOwing(address account) public view returns (uint256) {
-        if (_totalDividendPoints > Shares.lastDividendPoints(account)) {
-            uint256 newDividendPoints = _totalDividendPoints.sub(Shares.lastDividendPoints(account));
-            uint256 sharesBalance = Shares.externalRawBalanceOf(account);
+        if (_totalDividendPoints > shares.lastDividendPoints(account)) {
+            uint256 newDividendPoints = _totalDividendPoints.sub(shares.lastDividendPoints(account));
+            uint256 sharesBalance = shares.externalRawBalanceOf(account);
             return sharesBalance.mul(newDividendPoints).div(POINT_MULTIPLIER);
         } else {
             return 0;
@@ -287,14 +291,20 @@ contract Dollars is ERC20Detailed, Ownable {
     modifier updateAccount(address account) {
         uint256 owing = dividendsOwing(account);
 
-        if (owing > 0) {
+        if (owing != 0) {
             _unclaimedDividends = _unclaimedDividends.sub(owing);
             _dollarBalances[account] += owing;
         }
 
-        Shares.setDividendPoints(account, _totalDividendPoints);
+        shares.setDividendPoints(account, _totalDividendPoints);
 
         emit LogClaim(account, owing);
+        _;
+    }
+
+     
+    modifier uniqueAddresses(address addr1, address addr2) {
+        require(addr1 != addr2, "Addresses are not unique");
         _;
     }
 
@@ -337,6 +347,7 @@ contract Dollars is ERC20Detailed, Ownable {
      */
     function transfer(address to, uint256 value)
         public
+        uniqueAddresses(msg.sender, to)
         validRecipient(to)
         updateAccount(msg.sender)
         updateAccount(to)
@@ -371,6 +382,8 @@ contract Dollars is ERC20Detailed, Ownable {
      */
     function transferFrom(address from, address to, uint256 value)
         public
+        uniqueAddresses(msg.sender, from)
+        uniqueAddresses(msg.sender, to)
         validRecipient(to)
         updateAccount(from)
         updateAccount(msg.sender)
@@ -401,6 +414,7 @@ contract Dollars is ERC20Detailed, Ownable {
      */
     function approve(address spender, uint256 value)
         public
+        uniqueAddresses(msg.sender, spender)
         validRecipient(spender)
         updateAccount(msg.sender)
         updateAccount(spender)
@@ -420,6 +434,7 @@ contract Dollars is ERC20Detailed, Ownable {
      */
     function increaseAllowance(address spender, uint256 addedValue)
         public
+        uniqueAddresses(msg.sender, spender)
         updateAccount(msg.sender)
         updateAccount(spender)
         returns (bool)
@@ -438,6 +453,7 @@ contract Dollars is ERC20Detailed, Ownable {
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
         public
+        uniqueAddresses(msg.sender, spender)
         updateAccount(spender)
         updateAccount(msg.sender)
         returns (bool)
@@ -462,9 +478,11 @@ contract Dollars is ERC20Detailed, Ownable {
         require(amount <= _dollarBalances[msg.sender].add(dividendsOwing(msg.sender)), 'INSUFFICIENT_DOLLAR_BALANCE');
         require(amount <= _remainingDollarsToBeBurned, 'AMOUNT_MUST_BE_LESS_THAN_OR_EQUAL_TO_REMAINING_COINS');
 
-        uint256 usdPerShare = DollarPolicy.getUsdSharePrice(); // 1 share = x dollars
-        usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(100 * 10 ** 9)); // 10^9
-        uint256 sharesToMint = amount.mul(10 ** 9).div(usdPerShare); // 10^9
+        uint256 usdPerShare = dollarPolicy.getUsdSharePrice(); // 1 share = x dollars
+        uint256 decimals = 10 ** 9;
+        uint256 percentDenominator = 100;
+        usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(percentDenominator * decimals)); // 10^9
+        uint256 sharesToMint = amount.mul(decimals).div(usdPerShare); // 10^9
 
         return sharesToMint;
     }
@@ -486,7 +504,7 @@ contract Dollars is ERC20Detailed, Ownable {
     }
 
     function disburse(uint256 amount) internal returns (bool) {
-        _totalDividendPoints = _totalDividendPoints.add(amount.mul(POINT_MULTIPLIER).div(Shares.externalTotalSupply()));
+        _totalDividendPoints = _totalDividendPoints.add(amount.mul(POINT_MULTIPLIER).div(shares.externalTotalSupply()));
         _totalSupply = _totalSupply.add(amount);
         _unclaimedDividends = _unclaimedDividends.add(amount);
         return true;
@@ -498,12 +516,15 @@ contract Dollars is ERC20Detailed, Ownable {
         _totalSupply = _totalSupply.sub(amount);
         _dollarBalances[account] = _dollarBalances[account].sub(amount);
 
-        uint256 usdPerShare = DollarPolicy.getUsdSharePrice(); // 1 share = x dollars
-        usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(100 * 10 ** 9)); // 10^9
-        uint256 sharesToMint = amount.mul(10 ** 9).div(usdPerShare); // 10^9
+        uint256 usdPerShare = dollarPolicy.getUsdSharePrice(); // 1 share = x dollars
+        uint256 decimals = 10 ** 9;
+        uint256 percentDenominator = 100;
+
+        usdPerShare = usdPerShare.sub(usdPerShare.mul(burningDiscount).div(percentDenominator * decimals)); // 10^9
+        uint256 sharesToMint = amount.mul(decimals).div(usdPerShare); // 10^9
         _remainingDollarsToBeBurned = _remainingDollarsToBeBurned.sub(amount);
 
-        Shares.mintShares(account, sharesToMint);
+        shares.mintShares(account, sharesToMint);
 
         emit Transfer(account, address(0), amount);
         emit LogBurn(account, amount);
