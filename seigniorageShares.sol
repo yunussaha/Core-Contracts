@@ -38,26 +38,21 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
 
     bool private _initializedDollar;
     // eslint-ignore
-    IDollars Dollars;
+    IDollars dollars;
 
     mapping(address=>Account) private _shareBalances;
     mapping (address => mapping (address => uint256)) private _allowedShares;
 
-    bool reEntrancyMintMutex;
-
-    function setDividendPoints(address who, uint256 amount) external onlyMinter returns (bool) {
+    function setDividendPoints(address who, uint256 amount) external onlyMinter {
+        require(who != address(0), "Invalid recipient address");
         _shareBalances[who].lastDividendPoints = amount;
-        return true;
     }
 
-    function mintShares(address who, uint256 amount) external onlyMinter returns (bool) {
-        reEntrancyMintMutex = true;
+    function mintShares(address who, uint256 amount) external onlyMinter {
+        require(who != address(0), "Invalid recipient address");
 
         _shareBalances[who].balance = _shareBalances[who].balance.add(amount);
         _totalSupply = _totalSupply.add(amount);
-
-        reEntrancyMintMutex = false;
-        return true;
     }
 
     function externalTotalSupply()
@@ -101,14 +96,15 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
 
     // instantiate dollar
     function initializeDollar(address dollarAddress) public onlyOwner {
-        require(_initializedDollar == false, "ALREADY_INITIALIZED");
-        Dollars = IDollars(dollarAddress);
+        require(dollarAddress != address(0), "INVALID_DOLLAR_ADDRESS");
+        require(!_initializedDollar, "ALREADY_INITIALIZED");
+        dollars = IDollars(dollarAddress);
         _initializedDollar = true;
         _minter = dollarAddress;
     }
 
      /**
-     * @return The total number of Dollars.
+     * @return The total number of dollars.
      */
     function totalSupply()
         public
@@ -134,12 +130,12 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
      */
     function transfer(address to, uint256 value)
         public
+        uniqueAddresses(msg.sender, to)
+        validRecipient(to)
         updateAccount(msg.sender)
         updateAccount(to)
-        validRecipient(to)
         returns (bool)
     {
-        require(!reEntrancyMintMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
         _shareBalances[msg.sender].balance = _shareBalances[msg.sender].balance.sub(value);
         _shareBalances[to].balance = _shareBalances[to].balance.add(value);
         emit Transfer(msg.sender, to, value);
@@ -168,14 +164,14 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
      */
     function transferFrom(address from, address to, uint256 value)
         public
+        uniqueAddresses(msg.sender, from)
+        uniqueAddresses(msg.sender, to)
         validRecipient(to)
         updateAccount(from)
         updateAccount(msg.sender)
         updateAccount(to)
         returns (bool)
     {
-        require(!reEntrancyMintMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
-
         _allowedShares[from][msg.sender] = _allowedShares[from][msg.sender].sub(value);
 
         _shareBalances[from].balance = _shareBalances[from].balance.sub(value);
@@ -198,6 +194,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
      */
     function approve(address spender, uint256 value)
         public
+        uniqueAddresses(msg.sender, spender)
         validRecipient(spender)
         updateAccount(msg.sender)
         updateAccount(spender)
@@ -214,6 +211,11 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
         _;
     }
 
+    modifier uniqueAddresses(address addr1, address addr2) {
+        require(addr1 != addr2, "Addresses are not unique");
+        _;
+    }
+
     /**
      * @dev Increase the amount of tokens that an owner has allowed to a spender.
      * This method should be used instead of approve() to avoid the double approval vulnerability
@@ -223,6 +225,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
      */
     function increaseAllowance(address spender, uint256 addedValue)
         public
+        uniqueAddresses(msg.sender, spender)
         updateAccount(msg.sender)
         updateAccount(spender)
         returns (bool)
@@ -241,6 +244,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
         public
+        uniqueAddresses(msg.sender, spender)
         updateAccount(msg.sender)
         updateAccount(spender)
         returns (bool)
@@ -259,7 +263,7 @@ contract SeigniorageShares is ERC20Detailed, Ownable {
     modifier updateAccount(address account) {
         require(_initializedDollar == true, "DOLLAR_NEEDS_INITIALIZATION");
 
-        Dollars.claimDividends(account);
+        dollars.claimDividends(account);
         _;
     }
 }
