@@ -14,7 +14,6 @@ interface IDecentralizedOracle {
     function consult(address token, uint amountIn) external view returns (uint amountOut);
 }
 
-
 contract DollarsPolicy is Ownable {
     using SafeMath for uint256;
     using SafeMathInt for int256;
@@ -72,13 +71,14 @@ contract DollarsPolicy is Ownable {
     function getUsdSharePrice() external view returns (uint256) {
         sharesPerUsdOracle.update();
 
-        uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * 10 ** 9);        // 10^9 decimals
+        uint256 shareDecimals = 10 ** 9;
+        uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * shareDecimals);        // 10^9 decimals
         return sharePrice;
     }
 
     function rebase() external onlyOrchestrator {
         require(inRebaseWindow(), "OUTISDE_REBASE");
-        require(initializedOracle == true, 'ORACLE_NOT_INITIALIZED');
+        require(initializedOracle, 'ORACLE_NOT_INITIALIZED');
 
         require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now, "MIN_TIME_NOT_MET");
 
@@ -91,12 +91,15 @@ contract DollarsPolicy is Ownable {
         ethPerUsdOracle.update();
         ethPerUsdcOracle.update();
 
-        uint256 ethUsdcPrice = ethPerUsdcOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);        // 10^18 decimals ropsten, 10^6 mainnet
-        uint256 ethUsdPrice = ethPerUsdOracle.consult(WETH_ADDRESS, 1 * 10 ** 18);          // 10^9 decimals
-        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 21)                         // 10^18 decimals, 10**9 ropsten, 10**21 on mainnet
+        uint256 wethDecimals = 10 ** 18;
+        uint256 shareDecimals = 10 ** 9;
+
+        uint256 ethUsdcPrice = ethPerUsdcOracle.consult(WETH_ADDRESS, 1 * wethDecimals);        // 10^18 decimals ropsten, 10^6 mainnet
+        uint256 ethUsdPrice = ethPerUsdOracle.consult(WETH_ADDRESS, 1 * wethDecimals);          // 10^9 decimals
+        uint256 dollarCoinExchangeRate = ethUsdcPrice.mul(10 ** 21)                             // 10^18 decimals, 10**9 ropsten, 10**21 on mainnet
             .div(ethUsdPrice);
-        uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * 10 ** 9);        // 10^9 decimals
-        uint256 shareExchangeRate = sharePrice.mul(dollarCoinExchangeRate).div(10 ** 9);    // 10^18 decimals
+        uint256 sharePrice = sharesPerUsdOracle.consult(SHARE_ADDRESS, 1 * shareDecimals);      // 10^9 decimals
+        uint256 shareExchangeRate = sharePrice.mul(dollarCoinExchangeRate).div(shareDecimals);  // 10^18 decimals
 
         uint256 targetRate = cpi;
 
@@ -110,7 +113,7 @@ contract DollarsPolicy is Ownable {
         // Apply the Dampening factor.
         // supplyDelta = supplyDelta.mul(10 ** 9).div(rebaseLag.toInt256Safe());
         uint256 algorithmicLag_ = getAlgorithmicRebaseLag(supplyDelta);
-        require(algorithmicLag_ > 0, "algorithmic rate must be positive");
+        require(algorithmicLag_ != 0, "algorithmic rate must be positive");
         rebaseLag = algorithmicLag_;
 
         supplyDelta = supplyDelta.mul(10 ** 9).div(algorithmicLag_.toInt256Safe()); // v 0.0.1
@@ -161,7 +164,7 @@ contract DollarsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(cpi_ > 0);
+        require(cpi_ != 0);
         cpi = cpi_;
     }
 
@@ -169,7 +172,7 @@ contract DollarsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(rebaseLag_ > 0);
+        require(rebaseLag_ != 0);
         rebaseLag = rebaseLag_;
     }
 
@@ -178,7 +181,7 @@ contract DollarsPolicy is Ownable {
         address ethPerUsdOracleAddress,
         address ethPerUsdcOracleAddress
     ) external onlyOwner {
-        require(initializedOracle == false, 'ALREADY_INITIALIZED_ORACLE');
+        require(!initializedOracle, 'ALREADY_INITIALIZED_ORACLE');
         sharesPerUsdOracle = IDecentralizedOracle(sharesPerUsdOracleAddress);
         ethPerUsdOracle = IDecentralizedOracle(ethPerUsdOracleAddress);
         ethPerUsdcOracle = IDecentralizedOracle(ethPerUsdcOracleAddress);
@@ -224,7 +227,7 @@ contract DollarsPolicy is Ownable {
         external
         onlyOwner
     {
-        require(minRebaseTimeIntervalSec_ > 0);
+        require(minRebaseTimeIntervalSec_ != 0);
         require(rebaseWindowOffsetSec_ < minRebaseTimeIntervalSec_);
 
         minRebaseTimeIntervalSec = minRebaseTimeIntervalSec_;
