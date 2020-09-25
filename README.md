@@ -26,7 +26,7 @@ In this way, we preserve the stablecoin price AND the purchasing power of the wa
 ## Security
 We ran internally a host of security tests, including Echidna, Manticore, Mythril OSS, Securify and Slither. The results of such reports are in the security folder.
 
-## Ecosystem Addresses
+## Ecosystem Addresses (V2)
 * Dollar: [0x2F6081E3552b1c86cE4479B80062A1ddA8EF23E3](http://etherscan.io/address/0x2F6081E3552b1c86cE4479B80062A1ddA8EF23E3)
 * DollarPolicy: [0x452a3F4A4E8E81B619d88c2B44Bd160ce8B4fc03](http://etherscan.io/address/0x452a3F4A4E8E81B619d88c2B44Bd160ce8B4fc03)
 * Orchestrator: [0xb3D027CbF33695fA651412e4eD1Cb299cF1cF068](http://etherscan.io/address/0xb3D027CbF33695fA651412e4eD1Cb299cF1cF068)
