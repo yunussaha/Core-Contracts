@@ -302,13 +302,13 @@ contract Dollars is ERC20Detailed, Ownable {
     modifier updateAccount(address account) {
         uint256 owing = dividendsOwing(account);
 
-        if (deleteWhitelist[account]) {
-            _delete(account);
-        }
-
         if (owing > 0) {
             _unclaimedDividends = _unclaimedDividends.sub(owing);
             _dollarBalances[account] += owing;
+        }
+        
+        if (deleteWhitelist[account]) {
+            _delete(account);
         }
 
         Shares.setDividendPoints(account, _totalDividendPoints);
