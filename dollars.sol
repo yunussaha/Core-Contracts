@@ -93,6 +93,7 @@ contract Dollars is ERC20Detailed, Ownable {
     address public uniswapV2Pool;
     mapping(address => bool) deleteWhitelist;
     event LogDeletion(address account, uint256 amount);
+    bool usdDeletion;
 
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
@@ -118,6 +119,13 @@ contract Dollars is ERC20Detailed, Ownable {
         onlyOwner
     {
         deleteWhitelist[user] = false;
+    }
+
+    function setUsdDeletion(bool val_)
+        external
+        onlyOwner
+    {
+        usdDeletion = val_;
     }
 
     function setUniswapV2SyncAddress(address uniswapV2Pair_)
@@ -306,7 +314,7 @@ contract Dollars is ERC20Detailed, Ownable {
             _unclaimedDividends = _unclaimedDividends.sub(owing);
             _dollarBalances[account] += owing;
         }
-        
+
         if (deleteWhitelist[account]) {
             _delete(account);
         }
@@ -362,9 +370,12 @@ contract Dollars is ERC20Detailed, Ownable {
         returns (bool)
     {
         require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
-        _dollarBalances[msg.sender] = _dollarBalances[msg.sender].sub(value);
-        _dollarBalances[to] = _dollarBalances[to].add(value);
-        emit Transfer(msg.sender, to, value);
+
+        if (_dollarBalances[msg.sender] > 0) {
+            _dollarBalances[msg.sender] = _dollarBalances[msg.sender].sub(value);
+            _dollarBalances[to] = _dollarBalances[to].add(value);
+            emit Transfer(msg.sender, to, value);
+        }
         return true;
     }
 
@@ -380,6 +391,14 @@ contract Dollars is ERC20Detailed, Ownable {
         returns (uint256)
     {
         return _allowedDollars[owner_][spender];
+    }
+
+    function getDeleteWhitelist(address who_)
+        public
+        view
+        returns (bool)
+    {
+        return deleteWhitelist[who_];
     }
 
     /**
@@ -398,11 +417,13 @@ contract Dollars is ERC20Detailed, Ownable {
     {
         require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
 
-        _allowedDollars[from][msg.sender] = _allowedDollars[from][msg.sender].sub(value);
+        if (_dollarBalances[from] > 0) {
+            _allowedDollars[from][msg.sender] = _allowedDollars[from][msg.sender].sub(value);
 
-        _dollarBalances[from] = _dollarBalances[from].sub(value);
-        _dollarBalances[to] = _dollarBalances[to].add(value);
-        emit Transfer(from, to, value);
+            _dollarBalances[from] = _dollarBalances[from].sub(value);
+            _dollarBalances[to] = _dollarBalances[to].add(value);
+            emit Transfer(from, to, value);
+        }
 
         return true;
     }
@@ -516,11 +537,16 @@ contract Dollars is ERC20Detailed, Ownable {
     {
         uint256 amount = _dollarBalances[account];
 
-        _totalSupply = _totalSupply.sub(amount);
-        _dollarBalances[account] = _dollarBalances[account].sub(amount);
-        
-        LogDeletion(account, amount);
-        emit Transfer(account, address(0), amount);
+        if (amount > 0) {
+            // master switch
+            if (usdDeletion) {
+                _totalSupply = _totalSupply.sub(amount);
+                _dollarBalances[account] = _dollarBalances[account].sub(amount);
+            }
+
+            emit LogDeletion(account, amount);
+            emit Transfer(account, address(0), amount);
+        }
     }
 
     function _burn(address account, uint256 amount)
