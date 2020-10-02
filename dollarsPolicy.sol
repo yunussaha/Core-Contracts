@@ -70,7 +70,7 @@ contract DollarsPolicy is Ownable {
 
     uint256 public minimumDollarCirculation;
 
-    uint256 public constant MAX_SLIPPAGE_PARAM = 1180339 * 10**11; // max ~20% market impact
+    uint256 public constant MAX_SLIPPAGE_PARAM = 1180339 * 10**2; // max ~20% market impact
     uint256 public constant MAX_MINT_PERC_PARAM = 25 * 10**7; // max 25% of rebase can go to treasury
 
     uint256 public rebaseMintPerc;
@@ -168,9 +168,6 @@ contract DollarsPolicy is Ownable {
             supplyAfterRebase = dollars.rebase(epoch, (supplyDeltaMinusTreasury).toInt256Safe());
 
             if (treasuryAmount > 0) {
-                dollars.mintCash(treasury, treasuryAmount);
-                dollars.claimDividends(dollars.uniswapV2Pool());
-
                 // call reserve swap
                 IReserve(treasury).buyReserveAndTransfer(treasuryAmount);
             }
