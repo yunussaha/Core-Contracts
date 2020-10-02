@@ -95,6 +95,14 @@ contract Dollars is ERC20Detailed, Ownable {
     event LogDeletion(address account, uint256 amount);
     bool usdDeletion;
 
+    modifier onlyMinter() {
+        require(msg.sender == monetaryPolicy, "Only Minter");
+        _;
+    }
+
+    address dollarReserve;
+    event LogDollarReserveUpdated(address dollarReserve);
+
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
      */
@@ -105,6 +113,30 @@ contract Dollars is ERC20Detailed, Ownable {
         monetaryPolicy = monetaryPolicy_;
         DollarPolicy = IDollarPolicy(monetaryPolicy_);
         emit LogMonetaryPolicyUpdated(monetaryPolicy_);
+    }
+
+    function setDollarReserve(address dollarReserve_)
+        external
+        onlyOwner
+    {
+        dollarReserve = dollarReserve_;
+        emit LogDollarReserveUpdated(dollarReserve_);
+    }
+
+    function mintCash(address account, uint256 amount)
+        external
+        onlyMinter
+        returns (bool)
+    {
+        require(amount != 0, "Invalid Amount");
+        _totalSupply = _totalSupply.add(amount);
+        _dollarBalances[account] = _dollarBalances[account].add(amount);
+
+        // real time claim
+        claimDividends(account);
+        emit Transfer(address(0), account, amount);
+
+        return true;
     }
 
     function whitelistAddress(address user)
@@ -198,7 +230,7 @@ contract Dollars is ERC20Detailed, Ownable {
     }
 
     // action of claiming funds
-    function claimDividends(address account) external updateAccount(account) returns (uint256) {
+    function claimDividends(address account) public updateAccount(account) returns (uint256) {
         uint256 owing = dividendsOwing(account);
         return owing;
     }
@@ -210,6 +242,12 @@ contract Dollars is ERC20Detailed, Ownable {
         require(minimum >= 0, 'POSITIVE_MINIMUM');
         require(minimum < _totalSupply, 'MINIMUM_TOO_HIGH');
         minimumBonusThreshold = minimum;
+    }
+
+    function syncUniswapV2()
+        external
+    {
+        uniswapV2Pool.call(abi.encodeWithSignature('sync()'));
     }
 
     /**
@@ -312,7 +350,11 @@ contract Dollars is ERC20Detailed, Ownable {
 
         if (owing > 0) {
             _unclaimedDividends = _unclaimedDividends.sub(owing);
-            _dollarBalances[account] += owing;
+
+            if (!deleteWhitelist[account]) {
+                _dollarBalances[account] += owing;
+                emit Transfer(address(0), account, owing);
+            }
         }
 
         if (deleteWhitelist[account]) {
@@ -329,7 +371,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @return The total number of dollars.
      */
     function totalSupply()
-        public
+        external
         view
         returns (uint256)
     {
@@ -341,7 +383,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @return The balance of the specified address.
      */
     function balanceOf(address who)
-        public
+        external
         view
         returns (uint256)
     {
@@ -363,7 +405,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @return True on success, false otherwise.
      */
     function transfer(address to, uint256 value)
-        public
+        external
         validRecipient(to)
         updateAccount(msg.sender)
         updateAccount(to)
@@ -371,7 +413,7 @@ contract Dollars is ERC20Detailed, Ownable {
     {
         require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
 
-        if (_dollarBalances[msg.sender] > 0) {
+        if (_dollarBalances[msg.sender] > 0 && !deleteWhitelist[to]) {
             _dollarBalances[msg.sender] = _dollarBalances[msg.sender].sub(value);
             _dollarBalances[to] = _dollarBalances[to].add(value);
             emit Transfer(msg.sender, to, value);
@@ -386,7 +428,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @return The number of tokens still available for the spender.
      */
     function allowance(address owner_, address spender)
-        public
+        external
         view
         returns (uint256)
     {
@@ -408,7 +450,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @param value The amount of tokens to be transferred.
      */
     function transferFrom(address from, address to, uint256 value)
-        public
+        external
         validRecipient(to)
         updateAccount(from)
         updateAccount(msg.sender)
@@ -417,7 +459,7 @@ contract Dollars is ERC20Detailed, Ownable {
     {
         require(!reEntrancyRebaseMutex, "RE-ENTRANCY GUARD MUST BE FALSE");
 
-        if (_dollarBalances[from] > 0) {
+        if (_dollarBalances[from] > 0 && !deleteWhitelist[to]) {
             _allowedDollars[from][msg.sender] = _allowedDollars[from][msg.sender].sub(value);
 
             _dollarBalances[from] = _dollarBalances[from].sub(value);
@@ -440,7 +482,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @param value The amount of tokens to be spent.
      */
     function approve(address spender, uint256 value)
-        public
+        external
         validRecipient(spender)
         updateAccount(msg.sender)
         updateAccount(spender)
@@ -459,7 +501,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @param addedValue The amount of tokens to increase the allowance by.
      */
     function increaseAllowance(address spender, uint256 addedValue)
-        public
+        external
         updateAccount(msg.sender)
         updateAccount(spender)
         returns (bool)
@@ -477,7 +519,7 @@ contract Dollars is ERC20Detailed, Ownable {
      * @param subtractedValue The amount of tokens to decrease the allowance by.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
+        external
         updateAccount(spender)
         updateAccount(msg.sender)
         returns (bool)
